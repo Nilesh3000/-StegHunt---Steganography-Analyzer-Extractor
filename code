@@ -1,0 +1,53 @@
+import cv2
+import numpy as np
+import argparse
+from stegano import lsb
+import os
+from PIL import Image
+
+def detect_hidden_data(image_path):
+    image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
+    if image is None:
+        print("[ERROR] Could not open image!")
+        return False
+    
+    differences = np.sum(np.abs(np.diff(image.astype(np.int16), axis=2)), axis=2)
+    suspicious = np.count_nonzero(differences > 0)
+    total_pixels = image.shape[0] * image.shape[1]
+    hidden_ratio = (suspicious / total_pixels) * 100
+    
+    if hidden_ratio > 1:  # Threshold for suspicion
+        print(f"[ALERT] Potential hidden data detected! Suspicious pixels: {hidden_ratio:.2f}%")
+        return True
+    else:
+        print("[OK] No significant hidden data found.")
+        return False
+
+def extract_hidden_text(image_path):
+    try:
+        hidden_text = lsb.reveal(image_path)
+        if hidden_text:
+            print("[SUCCESS] Hidden text extracted:")
+            print(hidden_text)
+        else:
+            print("[INFO] No hidden text found in image.")
+    except Exception as e:
+        print(f"[ERROR] Could not extract hidden text: {e}")
+
+def main():
+    parser = argparse.ArgumentParser(description="StegHunt: Steganography Detector & Extractor")
+    parser.add_argument("-i", "--image", help="Path to the image file", required=True)
+    args = parser.parse_args()
+    
+    print("\n[INFO] Analyzing image for hidden data...")
+    if detect_hidden_data(args.image):
+        extract_hidden_text(args.image)
+    
+if __name__ == "__main__":
+    main()
+
+# Installation Guide
+# 1. Install required dependencies:
+#    pip install opencv-python numpy stegano pillow
+# 2. Run the tool with an image file:
+#    python steghunt.py -i suspicious_image.png
